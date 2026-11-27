@@ -18,6 +18,7 @@
   if (App.state.finPeriod.type !== 'custom') App.state.finPeriod.anchor = D.today();
   App.bindEvents();
   App.route();
+  App.collector.start();
 
   // Rappel de sauvegarde (une fois par jour au maximum)
   const hasData = App.data.companies.size > 0, lb = App.meta.lastBackup;

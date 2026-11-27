@@ -69,15 +69,22 @@ function igGrid() {
   const posts = ig ? App.list('posts', p => p.network === ig.id && p.date).sort((a, b) => (b.date + (b.time || '')).localeCompare(a.date + (a.time || ''))) : [];
   const td = D.today();
   return `<div class="ig card" style="padding:16px">
-    <div class="ig-head">${scopeC ? App.avatar(scopeC, 'lg') : `<span class="avatar lg" style="--c:var(--ink)">${ic('grid')}</span>`}<div><b>${esc(scopeC ? scopeC.name : 'Toutes les entreprises')}</b><div class="small muted">Aperçu du feed Instagram · ${posts.filter(p => p.date > td).length} à venir</div></div></div>
+    <div class="ig-head">${scopeC ? App.avatar(scopeC, 'lg') : `<span class="avatar lg" style="--c:var(--ink)">${ic('grid')}</span>`}<div><b>${esc(scopeC ? scopeC.name : 'Toutes les entreprises')}</b><div class="small muted">Aperçu du feed Instagram · ${posts.filter(p => p.date > td).length} à venir</div>${igFollowers()}</div></div>
     ${posts.length ? `<div class="ig-grid">${posts.slice(0, 30).map(p => {
       const future = p.date > td || !App.status('post', p).published;
       return `<div class="ig-cell ${future ? 'future' : ''}" draggable="true" data-drag="posts|${p.id}" data-drop="igswap|${p.id}" data-act="edit" data-coll="posts" data-id="${p.id}" title="${esc(p.title)} · ${esc(D.fmt(p.date))}">
-        ${future ? `<span class="badge">${esc(D.fmt(p.date))}</span>` : ''}${p.cover ? `<img data-file="${p.cover}" alt="">` : `<span>${esc(p.title || '')}</span>`}</div>`;
+        ${future ? `<span class="badge">${esc(D.fmt(p.date))}</span>` : ''}${p.cover ? `<img data-file="${p.cover}" alt="">` : p.coverUrl ? `<img src="${esc(safeUrl(p.coverUrl))}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span>${esc(p.title || '')}</span>`}</div>`;
     }).join('')}</div>
     <div class="small muted" style="margin-top:10px">Glisse une vignette sur une autre pour échanger leurs dates de publication. Contour = pas encore publiée.</div>`
       : `<div class="empty">Les publications Instagram datées apparaîtront ici avec leur couverture.</div>`}
   </div>`;
+}
+/* Abonnés Instagram (collecteur) des comptes de l'entreprise affichée */
+function igFollowers() {
+  const accs = ((App.collector && App.collector.cache && App.collector.cache.ig) || []).filter(a => App.inScope(App.collector.companyFor('ig', a.id)));
+  if (!accs.length) return '';
+  const n = accs.reduce((s, a) => s + (+a.followers || 0), 0);
+  return `<div class="small"><b style="font-weight:500">${App.num(n)}</b> abonnés${accs.length === 1 ? ' · @' + esc(accs[0].username) : ''}</div>`;
 }
 App.swapPostDates = (a, b) => {
   if (!a || !b || a.id === b.id) return;

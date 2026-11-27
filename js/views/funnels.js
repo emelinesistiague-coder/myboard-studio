@@ -165,7 +165,7 @@ App.act.newStats = el => {
   if (!fid) { App.toast('Crée d’abord un tunnel'); return; }
   App.newStatsFor(App.get('funnels', fid));
 };
-App.newStatsFor = f => App.edit('funnelStats', { funnelId: f.id, companyId: f.companyId, date: D.today(), visitors: {}, promos: [], toFinance: true }, { isNew: true });
+App.newStatsFor = f => App.edit('funnelStats', { funnelId: f.id, companyId: f.companyId, date: D.today(), visitors: {}, promos: [], toFinance: !App.collectorOn() }, { isNew: true }); // avec le collecteur, les ventes arrivent déjà dans Finances
 App.edActions.addStats = d => { const f = App.saveEditor({ keepOpen: true }); if (f) App.newStatsFor(f); };
 App.edActions.addCampaign = d => { const f = App.saveEditor({ keepOpen: true }); if (f) App.quickCreate('campaign', { companyId: f.companyId, funnelId: f.id }); };
 App.edActions.copyLink = (d, b) => { (navigator.clipboard ? navigator.clipboard.writeText(b.dataset.v) : Promise.reject()).then(() => App.toast('Lien copié')).catch(() => App.toast('Sélectionne le lien pour le copier')); };

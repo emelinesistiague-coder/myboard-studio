@@ -18,9 +18,15 @@ L'application est aussi publiée gratuitement en ligne (GitHub Pages). Ouvre son
 - **iPhone (Safari)** : bouton Partager → « Sur l'écran d'accueil ».
 - **Android (Chrome)** : menu ⋮ → « Installer l'application ».
 
-Chaque appareil garde **ses propres données** : rien n'est envoyé sur internet, la page publiée ne contient que l'application, vide. Pour transférer tes données d'un appareil à l'autre, exporte une sauvegarde sur le premier et restaure-la sur le second.
+Sans collecteur, chaque appareil garde **ses propres données** (la page publiée ne contient que l'application, vide). Avec le collecteur (voir ci-dessous), ordinateur et téléphone se synchronisent tout seuls via ton Google Drive.
 
 Sur iPhone, utilise bien l'application installée sur l'écran d'accueil : dans un simple onglet Safari, les données d'un site peu visité peuvent être effacées par le système.
+
+## Connexions automatiques (ventes, visites, Instagram, pubs)
+
+Un petit collecteur gratuit tourne sur ton compte Google et récupère toutes les heures tes ventes Stripe et PayPal, les visites de tes tunnels Systeme.io, tes statistiques Instagram et tes dépenses Meta Ads. Il synchronise aussi tes appareils.
+
+Installation pas à pas (environ 15 minutes) : [collecteur/GUIDE.md](collecteur/GUIDE.md). Ensuite : **Paramètres → Connexions**.
 
 ## Sauvegarder tes données (important)
 
@@ -51,5 +57,7 @@ js/model.js           modèle d'entreprise, statuts, calculs (tâches, finances,
 js/ui.js              navigation, composants, recherche, ajout rapide
 js/editor.js          fiches d'édition de tous les éléments
 js/views/*.js         une page par fichier
+js/connect.js         collecteur : récupération des données et synchronisation
+collecteur/           code Google Apps Script du collecteur et son guide
 serveur.js            mini-serveur local
 ```

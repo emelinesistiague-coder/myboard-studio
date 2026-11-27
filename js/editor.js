@@ -47,6 +47,7 @@ App.SCHEMAS = {
       { k: 'notes', label: 'Notes complémentaires', t: 'textarea', full: 1, more: 1 },
       { k: 'files', label: 'Fichiers associés (vidéo, visuels…)', t: 'files', full: 1, more: 1 },
       { k: '_links', t: 'info', full: 1, html: d => App.postLinks(d) },
+      { k: '_ig', t: 'info', full: 1, html: d => App.igStatsBlock(d) },
     ],
   },
   scripts: {
@@ -126,6 +127,7 @@ App.SCHEMAS = {
       { k: 'status', label: 'Statut', t: 'select', opts: d => opt(App.statusList('funnel', d.companyId)) },
       { k: 'offer', label: 'Produit / offre concernée', t: 'text', ph: 'ex. Formation Lumière naturelle' },
       { k: 'price', label: 'Prix de l’offre (€)', t: 'number', step: '0.01' },
+      { k: 'saleKeywords', label: 'Mots-clés des ventes (reconnaissance automatique Stripe / PayPal)', t: 'text', full: 1, ph: 'Par défaut : le nom de l’offre. Plusieurs mots-clés séparés par des virgules.' },
       { k: 'steps', label: 'Parcours client', t: 'steps', full: 1 },
       { k: '_perf', t: 'info', full: 1, html: d => d.id ? App.funnelMini(d) : '' },
       { k: 'description', label: 'Description', t: 'textarea', full: 1, more: 1 },
@@ -390,6 +392,8 @@ App.closeEditor = (discard) => {
 App.edActions = {};
 App.editorActions = (coll, d, isNew) => {
   const r = { top: '', foot: '' };
+  if (d.auto && (coll === 'funnelStats' || coll === 'transactions')) r.top = `<div class="note-box" style="margin-top:8px">${ic('later')} Importé automatiquement par le collecteur : cet élément est recalculé à chaque collecte. Pour le corriger, modifie plutôt sa source (tunnel, compte relié, mots-clés).</div>`;
+  if (d.auto && coll === 'campaigns') r.top = `<div class="note-box" style="margin-top:8px">${ic('later')} Campagne Meta importée automatiquement : coût et dates se mettent à jour seuls. Tu peux choisir son tunnel, son code promo et ses notes.</div>`;
   if (coll === 'tasks' && !isNew && d.kind !== 'event') r.foot = `<button class="btn" data-ed="postpone">${ic('later')} Reporter</button>`;
   if (coll === 'scripts') r.foot = `<button class="btn" data-ed="scriptToPost">${ic('film')} Créer la publication</button>`;
   if (coll === 'posts' && !isNew) r.foot = `<button class="btn" data-ed="postTask">${ic('check')} Ajouter une tâche liée</button>`;
@@ -430,6 +434,12 @@ App.postLinks = d => {
   const tasks = d.id ? App.list('tasks', t => t.postId === d.id) : [];
   tasks.forEach(t => parts.push(`<button class="btn sm" data-ed="openLinked" data-coll="tasks" data-id="${t.id}">${App.isDone(t) ? '✓' : ic('check')} ${esc(t.title)}</button>`));
   return parts.length ? `<div class="field"><label>Éléments liés</label><div style="display:flex;gap:6px;flex-wrap:wrap">${parts.join('')}</div></div>` : '';
+};
+App.igStatsBlock = d => {
+  const s = d.igStats; if (!s) return '';
+  const k = (n, l) => `<div><b>${App.num(n)}</b><span>${l}</span></div>`;
+  return `<div class="field"><label>Statistiques Instagram ${d.igPermalink ? `· <a href="${esc(safeUrl(d.igPermalink))}" target="_blank" rel="noopener">voir la publication</a>` : ''}</label>
+    <div class="mini-kpis">${k(s.views, 'vues')}${k(s.reach, 'comptes touchés')}${k(s.likes, 'j’aime')}${k(s.comments, 'commentaires')}${k(s.saved, 'enregistrements')}${k(s.shares, 'partages')}</div></div>`;
 };
 App.scriptLinks = d => {
   const posts = d.id ? App.list('posts', p => p.scriptId === d.id) : [];

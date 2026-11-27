@@ -5,10 +5,10 @@ App.state.setTab = 'companies';
 App.views.settings = {
   render() {
     const tab = App.state.setTab;
-    const tabs = [['companies', 'Entreprises'], ['custom', 'Statuts & catégories'], ['fiscal', 'Fiscalité & dons'], ['data', 'Données & sauvegarde']];
+    const tabs = [['companies', 'Entreprises'], ['custom', 'Statuts & catégories'], ['fiscal', 'Fiscalité & dons'], ['connect', 'Connexions'], ['data', 'Données & sauvegarde']];
     let body = '';
-    if (!App.companies({ archived: true }).length && tab !== 'data') body = App.onboarding();
-    else body = { companies: companiesTab, custom: customTab, fiscal: fiscalTab, data: dataTab }[tab]();
+    if (!App.companies({ archived: true }).length && tab !== 'data' && tab !== 'connect') body = App.onboarding();
+    else body = { companies: companiesTab, custom: customTab, fiscal: fiscalTab, connect: App.connectTab, data: dataTab }[tab]();
     return `<div class="page-head"><div><h1>Paramètres</h1><div class="sub">Tout est enregistré sur cet appareil.</div></div></div>
       <div class="seg" style="margin-bottom:20px;flex-wrap:wrap">${tabs.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="setTab" data-v="${k}">${l}</button>`).join('')}</div>${body}`;
   },
