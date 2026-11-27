@@ -119,6 +119,57 @@ App.SCHEMAS = {
       { k: 'files', label: 'Justificatifs', t: 'files', full: 1 },
     ],
   },
+  funnels: {
+    label: () => 'Tunnel de vente', titleKey: 'name', titlePh: () => 'Nom du tunnel', wide: 1,
+    fields: [
+      { k: 'companyId', label: 'Entreprise', t: 'select', opts: companyOpts, rerender: 1 },
+      { k: 'status', label: 'Statut', t: 'select', opts: d => opt(App.statusList('funnel', d.companyId)) },
+      { k: 'offer', label: 'Produit / offre concernée', t: 'text', ph: 'ex. Formation Lumière naturelle' },
+      { k: 'price', label: 'Prix de l’offre (€)', t: 'number', step: '0.01' },
+      { k: 'steps', label: 'Parcours client', t: 'steps', full: 1 },
+      { k: '_perf', t: 'info', full: 1, html: d => d.id ? App.funnelMini(d) : '' },
+      { k: 'description', label: 'Description', t: 'textarea', full: 1, more: 1 },
+      { k: 'notes', label: 'Notes', t: 'textarea', full: 1, more: 1 },
+      { k: 'files', label: 'Fichiers joints', t: 'files', full: 1, more: 1 },
+    ],
+  },
+  funnelStats: {
+    label: () => 'Statistiques du tunnel', titleKey: 'label', titlePh: () => 'Libellé (facultatif, ex. Semaine 48)', optionalTitle: 1, wide: 1,
+    fields: [
+      { k: 'funnelId', label: 'Tunnel', t: 'select', rerender: 1, opts: d => App.list('funnels', f => !d.companyId || f.companyId === d.companyId || f.id === d.funnelId).map(f => ({ id: f.id, label: f.name + (App.scope() === 'all' ? ' · ' + App.companyName(f.companyId) : '') })) },
+      { k: 'date', label: 'Date (ou début de la période)', t: 'date' },
+      { k: 'end', label: 'Fin de la période (facultatif)', t: 'date' },
+      { k: 'source', label: 'Source du trafic', t: 'select', opts: d => opt(App.catList('source', d.companyId), 'Toutes sources / non précisé') },
+      { k: 'campaignId', label: 'Campagne', t: 'select', opts: d => [{ id: '', label: 'Aucune' }].concat(App.list('campaigns', c => c.companyId === d.companyId).map(c => ({ id: c.id, label: c.name }))) },
+      { k: 'visitors', label: 'Visiteurs par étape', t: 'visitors', full: 1 },
+      { k: 'clicks', label: 'Clics (bouton d’achat)', t: 'number' },
+      { k: 'carts', label: 'Ajouts au panier', t: 'number' },
+      { k: 'checkouts', label: 'Paiements commencés', t: 'number' },
+      { k: 'purchases', label: 'Paiements finalisés (ventes)', t: 'number' },
+      { k: 'revenue', label: 'Chiffre d’affaires généré (€)', t: 'number', step: '0.01' },
+      { k: 'toFinance', label: 'Ajouter ce chiffre d’affaires dans Finances → Revenus (sans ressaisie)', t: 'check', full: 1 },
+      { k: 'promos', label: 'Codes promo utilisés', t: 'promos', full: 1 },
+      { k: 'notes', label: 'Notes', t: 'textarea', full: 1, more: 1 },
+    ],
+  },
+  campaigns: {
+    label: () => 'Campagne marketing', titleKey: 'name', titlePh: () => 'Nom de la campagne',
+    fields: [
+      { k: 'companyId', label: 'Entreprise', t: 'select', opts: companyOpts, rerender: 1 },
+      { k: 'category', label: 'Type', t: 'select', opts: d => opt(App.catList('campaign', d.companyId), 'Choisir…') },
+      { k: 'source', label: 'Source / canal', t: 'select', rerender: 1, opts: d => opt(App.catList('source', d.companyId), 'Choisir…') },
+      { k: 'funnelId', label: 'Tunnel associé', t: 'select', rerender: 1, opts: d => [{ id: '', label: 'Aucun' }].concat(App.list('funnels', f => f.companyId === d.companyId).map(f => ({ id: f.id, label: f.name }))) },
+      { k: 'start', label: 'Début', t: 'date' },
+      { k: 'end', label: 'Fin', t: 'date' },
+      { k: 'cost', label: 'Coût / budget dépensé (€)', t: 'number', step: '0.01' },
+      { k: 'promoCode', label: 'Code promo associé', t: 'text', ph: 'ex. LUMIERE10' },
+      { k: 'partner', label: 'Partenaire / créateur (collaboration)', t: 'text' },
+      { k: 'toFinance', label: 'Enregistrer ce coût dans Finances → Dépenses (sans ressaisie)', t: 'check', full: 1 },
+      { k: '_link', t: 'info', full: 1, html: d => App.trackingLinkBlock(d) },
+      { k: 'notes', label: 'Notes', t: 'textarea', full: 1, more: 1 },
+      { k: 'files', label: 'Fichiers joints (visuels, contrat…)', t: 'files', full: 1, more: 1 },
+    ],
+  },
   companies: {
     label: () => 'Entreprise', titleKey: 'name',
     fields: [
@@ -140,8 +191,9 @@ App.edit = (coll, item, { isNew } = {}) => {
   const draft = clone(item);
   const sch = App.SCHEMAS[coll];
   if (coll === 'tasks') { draft.kind = draft.kind || 'task'; draft.sched = draft.sched || (draft.kind === 'event' ? 'day' : 'none'); }
+  if (coll === 'funnels' && !draft.steps) draft.steps = App.defaultSteps();
   if (sch.fields.some(f => f.k === 'status') && !draft.status) {
-    const kind = { tasks: 'task', posts: 'post', scripts: 'script', projects: 'project' }[coll];
+    const kind = { tasks: 'task', posts: 'post', scripts: 'script', projects: 'project', funnels: 'funnel' }[coll];
     const list = App.statusList(kind, draft.companyId);
     draft.status = (list.find(s => s.id === draft.status) || (coll === 'projects' ? list.find(s => s.id === 'en-cours') : null) || list[0] || {}).id;
   }
@@ -207,6 +259,29 @@ function fieldHTML(f, d) {
     case 'subtasks': return wrap(`<div class="subtasks">${(v || []).map((s, i) => `<div class="st"><button type="button" class="check ${s.done ? 'on' : ''}" data-ed="stcheck" data-i="${i}"></button><input class="input" data-st="${i}" value="${esc(s.title)}"><button class="iconbtn" data-ed="strm" data-i="${i}">${ic('x')}</button></div>`).join('')}
       <input class="inline-add" placeholder="+ Ajouter une sous-tâche (Entrée)" data-stadd="1"></div>`);
     case 'info': return `<div class="full">${f.html(d)}</div>`;
+    case 'check': return `<div class="field full"><label class="checkline" style="color:var(--ink-2);font-size:13px"><input type="checkbox" data-k="${f.k}" ${v ? 'checked' : ''}> ${esc(L)}</label></div>`;
+    case 'steps': return wrap(`<div class="steps-edit">${(v || []).map((s, i) => `<div class="step-row" style="--c:${App.stepType(s.type).color}">
+        <span class="step-num">${i + 1}</span>
+        <select class="input" data-step="${i}" data-sk="type">${App.STEP_TYPES.map(t => `<option value="${t.id}" ${t.id === s.type ? 'selected' : ''}>${esc(t.label)}</option>`).join('')}</select>
+        <input class="input" data-step="${i}" data-sk="name" value="${esc(s.name || '')}" placeholder="Nom de l’étape">
+        <input class="input" data-step="${i}" data-sk="url" value="${esc(s.url || '')}" placeholder="https://… (lien de la page)">
+        <span class="step-acts">${s.url ? `<a class="iconbtn" href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener" title="Ouvrir la page">${ic('link')}</a>` : ''}
+        <button type="button" class="iconbtn" data-ed="stepMove" data-i="${i}" data-dir="-1" ${i === 0 ? 'disabled' : ''} title="Monter">↑</button>
+        <button type="button" class="iconbtn" data-ed="stepMove" data-i="${i}" data-dir="1" ${i === v.length - 1 ? 'disabled' : ''} title="Descendre">↓</button>
+        <button type="button" class="iconbtn" data-ed="stepRm" data-i="${i}" title="Retirer">${ic('x')}</button></span></div>`).join('')}
+      <button type="button" class="btn sm" data-ed="stepAdd" style="align-self:flex-start">${ic('plus')} Ajouter une étape</button></div>`);
+    case 'visitors': {
+      const fu = App.get('funnels', d.funnelId);
+      if (!fu || !(fu.steps || []).length) return wrap('<div class="small muted">Choisis un tunnel qui a des étapes.</div>');
+      d.visitors = d.visitors || {};
+      return wrap(`<div class="vis-grid">${fu.steps.map(s => `<label class="vis-cell" style="--c:${App.stepType(s.type).color}"><span>${esc(s.name || App.stepType(s.type).label)}</span><input class="input" type="number" min="0" data-vis="${s.id}" value="${d.visitors[s.id] ?? ''}" placeholder="0"></label>`).join('')}</div>`);
+    }
+    case 'promos': return wrap(`<div class="steps-edit">${(v || []).map((p, i) => `<div class="promo-row">
+        <input class="input" data-promo="${i}" data-pk="code" value="${esc(p.code || '')}" placeholder="CODE">
+        <input class="input" type="number" min="0" data-promo="${i}" data-pk="uses" value="${p.uses ?? ''}" placeholder="Utilisations">
+        <input class="input" type="number" step="0.01" data-promo="${i}" data-pk="revenue" value="${p.revenue ?? ''}" placeholder="CA (€)">
+        <button type="button" class="iconbtn" data-ed="promoRm" data-i="${i}">${ic('x')}</button></div>`).join('')}
+      <button type="button" class="btn sm" data-ed="promoAdd" style="align-self:flex-start">${ic('plus')} Ajouter un code promo</button></div>`);
   }
   return '';
 }
@@ -215,7 +290,7 @@ function bindEditor(d) {
   const ed = App.ed, dr = ed.draft;
   d.querySelectorAll('[data-k]').forEach(el => {
     const h = () => {
-      let v = el.value;
+      let v = el.type === 'checkbox' ? el.checked : el.value;
       if (el.dataset.num) v = v === '' ? null : +v;
       if (el.dataset.week && v) v = D.weekStart(v);
       dr[el.dataset.k] = v;
@@ -234,6 +309,14 @@ function bindEditor(d) {
     for (const f of inp.files) { if (f.size > 200 * 1024 * 1024) { App.toast(`${f.name} est trop volumineux (200 Mo max)`); continue; } const rec = await App.saveFile(f); dr[k].push(rec.id); }
     App.renderEditor();
   }));
+  d.querySelectorAll('[data-step]').forEach(el => el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => {
+    const s = dr.steps[+el.dataset.step], k = el.dataset.sk, old = s.type;
+    s[k] = el.value;
+    if (k === 'type' && (!s.name || s.name === App.stepType(old).label)) { s.name = App.stepType(s.type).label; App.renderEditor(); }
+    if (k === 'type') App.renderEditor();
+  }));
+  d.querySelectorAll('[data-vis]').forEach(el => el.addEventListener('input', () => { dr.visitors = dr.visitors || {}; dr.visitors[el.dataset.vis] = el.value === '' ? null : +el.value; }));
+  d.querySelectorAll('[data-promo]').forEach(el => el.addEventListener('input', () => { const p = dr.promos[+el.dataset.promo]; p[el.dataset.pk] = el.dataset.pk === 'code' ? el.value : (el.value === '' ? null : +el.value); }));
   d.querySelectorAll('[data-st]').forEach(inp => inp.addEventListener('input', () => { dr.subtasks[+inp.dataset.st].title = inp.value; }));
   const sa = d.querySelector('[data-stadd]');
   if (sa) sa.addEventListener('keydown', e => { if (e.key === 'Enter' && sa.value.trim()) { e.preventDefault(); dr.subtasks = dr.subtasks || []; dr.subtasks.push({ title: sa.value.trim(), done: false }); App.renderEditor(); const n = $('.drawer [data-stadd]'); n && n.focus(); } });
@@ -241,7 +324,8 @@ function bindEditor(d) {
 }
 function onRerender(k) {
   const dr = App.ed.draft;
-  if (k === 'companyId' || k === 'kind' || k === 'type') { dr.category = ''; const kind = { tasks: 'task', posts: 'post', scripts: 'script', projects: 'project' }[App.ed.coll]; if (kind && k === 'companyId') { const l = App.statusList(kind, dr.companyId); if (!l.find(s => s.id === dr.status)) dr.status = (l[0] || {}).id; } }
+  if (k === 'funnelId' && App.ed.coll === 'funnelStats') { const fu = App.get('funnels', dr.funnelId); if (fu) dr.companyId = fu.companyId; dr.visitors = {}; }
+  if (k === 'companyId' || k === 'kind' || k === 'type') { dr.category = ''; const kind = { tasks: 'task', posts: 'post', scripts: 'script', projects: 'project', funnels: 'funnel' }[App.ed.coll]; if (kind && k === 'companyId') { const l = App.statusList(kind, dr.companyId); if (!l.find(s => s.id === dr.status)) dr.status = (l[0] || {}).id; } }
   if (k === 'kind' && dr.kind === 'event') { dr.sched = 'day'; dr.date = dr.date || D.today(); }
   if (k === 'sched') { const td = D.today(); if (dr.sched === 'day' && !dr.date) dr.date = td; if (dr.sched === 'week' && !dr.week) dr.week = D.weekStart(td); if (dr.sched === 'month' && !dr.month) dr.month = td.slice(0, 7); }
   if (k === 'period') dr.periodValue = dr.period === 'year' ? D.today().slice(0, 4) : D.today().slice(0, 7);
@@ -261,6 +345,11 @@ function onEdClick(e) {
   if (a === 'rmfile') { dr[b.dataset.k] = dr[b.dataset.k].filter(x => x !== b.dataset.id); App.renderEditor(); }
   if (a === 'stcheck') { dr.subtasks[+b.dataset.i].done = !dr.subtasks[+b.dataset.i].done; App.renderEditor(); }
   if (a === 'strm') { dr.subtasks.splice(+b.dataset.i, 1); App.renderEditor(); }
+  if (a === 'stepAdd') { dr.steps = dr.steps || []; const last = dr.steps[dr.steps.length - 1]; const t = !last ? 'vente' : ({ capture: 'vente', vente: 'paiement', paiement: 'upsell', upsell: 'merci', downsell: 'merci', merci: 'telechargement' }[last.type] || 'autre'); dr.steps.push({ id: uid(), type: t, name: App.stepType(t).label, url: '' }); App.renderEditor(); }
+  if (a === 'stepRm') { dr.steps.splice(+b.dataset.i, 1); App.renderEditor(); }
+  if (a === 'stepMove') { const i = +b.dataset.i, j = i + +b.dataset.dir; if (j >= 0 && j < dr.steps.length) { [dr.steps[i], dr.steps[j]] = [dr.steps[j], dr.steps[i]]; App.renderEditor(); } }
+  if (a === 'promoAdd') { dr.promos = dr.promos || []; dr.promos.push({ code: '', uses: null, revenue: null }); App.renderEditor(); }
+  if (a === 'promoRm') { dr.promos.splice(+b.dataset.i, 1); App.renderEditor(); }
   if (App.edActions[a]) App.edActions[a](dr, b);
 }
 
@@ -268,7 +357,12 @@ App.saveEditor = ({ keepOpen } = {}) => {
   const ed = App.ed; if (!ed) return null;
   const sch = App.SCHEMAS[ed.coll], dr = ed.draft, tk = sch.titleKey;
   if (ed.coll === 'notes' && !dr.title && !dr.body) { App.toast('La note est vide'); return null; }
-  if (ed.coll !== 'notes' && ed.coll !== 'transactions' && !String(dr[tk] || '').trim()) { App.toast('Ajoute un titre'); $('.drawer .title-input') && $('.drawer .title-input').focus(); return null; }
+  if (ed.coll === 'funnelStats') {
+    const fu = App.get('funnels', dr.funnelId); if (!fu) { App.toast('Choisis un tunnel'); return null; }
+    if (!dr.date) { App.toast('Indique une date'); return null; }
+    dr.companyId = fu.companyId;
+  }
+  if (!sch.optionalTitle && ed.coll !== 'notes' && ed.coll !== 'transactions' && !String(dr[tk] || '').trim()) { App.toast('Ajoute un titre'); $('.drawer .title-input') && $('.drawer .title-input').focus(); return null; }
   if (ed.coll === 'transactions' && !(+dr.amount)) { App.toast('Indique un montant'); return null; }
   if (ed.coll === 'transactions' && !dr.label) dr.label = App.TX_TYPES[dr.type].label;
   if (ed.coll === 'tasks') {
@@ -276,6 +370,7 @@ App.saveEditor = ({ keepOpen } = {}) => {
     if (!App.isDone(dr)) delete dr.doneAt;
   }
   const saved = App.put(ed.coll, dr);
+  if (App.afterSave[ed.coll]) App.afterSave[ed.coll](saved);
   if (ed.coll !== 'companies' && dr.companyId) { App.prefs.lastCompany = dr.companyId; App.savePrefs(); }
   if (ed.isNew) App.toast(`${sch.label(dr)} enregistré${['tasks', 'posts', 'notes', 'transactions'].includes(ed.coll) && !(ed.coll === 'tasks' && dr.kind === 'event') && ed.coll !== 'transactions' ? 'e' : ''}`);
   if (keepOpen) { ed.isNew = false; ed.orig = JSON.stringify(dr); App.renderEditor(); } else App.closeEditor(true);
@@ -299,6 +394,7 @@ App.editorActions = (coll, d, isNew) => {
   if (coll === 'scripts') r.foot = `<button class="btn" data-ed="scriptToPost">${ic('film')} Créer la publication</button>`;
   if (coll === 'posts' && !isNew) r.foot = `<button class="btn" data-ed="postTask">${ic('check')} Ajouter une tâche liée</button>`;
   if (coll === 'notes' && !isNew) r.foot = `<button class="btn" data-ed="convertNote">${ic('arrow')} Transformer en…</button>`;
+  if (coll === 'funnels' && !isNew) r.foot = `<button class="btn" data-ed="addStats">${ic('plus')} Saisir des statistiques</button><button class="btn" data-ed="addCampaign">${ic('target')} Campagne</button>`;
   if (coll === 'goals' && !isNew) { const p = App.goalProgress(d); r.top = `<div style="margin-top:8px"><div class="progress"><i style="width:${p.ratio * 100}%"></i></div><div class="small muted" style="margin-top:4px">${fmtGoal(d, p.cur)} / ${fmtGoal(d, p.target)}</div></div>`; }
   return r;
 };

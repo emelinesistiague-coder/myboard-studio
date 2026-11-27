@@ -81,7 +81,7 @@ function dataTab() {
   const trash = [];
   COLLS.forEach(coll => App.data[coll].forEach(o => { if (o.deletedAt) trash.push({ coll, o }); }));
   trash.sort((a, b) => b.o.deletedAt - a.o.deletedAt);
-  const label = { companies: 'Entreprise', tasks: 'Tâche', posts: 'Publication', scripts: 'Script', notes: 'Note', projects: 'Projet', goals: 'Objectif', transactions: 'Finances' };
+  const label = { companies: 'Entreprise', tasks: 'Tâche', posts: 'Publication', scripts: 'Script', notes: 'Note', projects: 'Projet', goals: 'Objectif', transactions: 'Finances', funnels: 'Tunnel', funnelStats: 'Statistiques', campaigns: 'Campagne' };
   const theme = App.prefs.theme || 'auto';
   return `<div class="grid g2">
     <div class="card"><div class="card-head"><h3>Sauvegarde</h3></div>
@@ -141,8 +141,8 @@ App.act.delItem = async el => {
   const c = setCompany(), arr = getPath(c, el.dataset.path), x = arr[+el.dataset.i];
   if (el.dataset.path.startsWith('statuses') && arr.length <= 1) { App.toast('Il faut garder au moins un statut'); return; }
   const [kind, sub] = el.dataset.path.split('.');
-  const coll = { task: 'tasks', event: 'tasks', post: 'posts', script: 'scripts', project: 'projects', note: 'notes', revenue: 'transactions', expense: 'transactions', tax: 'transactions' }[sub];
-  const key = kind === 'statuses' ? 'status' : kind === 'networks' ? 'network' : 'category';
+  const coll = { task: 'tasks', event: 'tasks', post: 'posts', script: 'scripts', project: 'projects', note: 'notes', revenue: 'transactions', expense: 'transactions', tax: 'transactions', funnel: 'funnels', campaign: 'campaigns', source: 'funnelStats' }[sub];
+  const key = kind === 'statuses' ? 'status' : kind === 'networks' ? 'network' : sub === 'source' ? 'source' : 'category';
   const used = coll ? [...App.data[coll].values()].filter(o => o.companyId === c.id && o[key] === x.id && !o.deletedAt).length : kind === 'networks' ? [...App.data.posts.values(), ...App.data.scripts.values()].filter(o => o.companyId === c.id && o.network === x.id).length : 0;
   if (used && !(await App.confirm(`« ${x.label} » est utilisé par ${plural(used, 'élément')}. Le supprimer quand même ?`, { ok: 'Supprimer', danger: 1 }))) return;
   editList(el, (a, i) => a.splice(i, 1));

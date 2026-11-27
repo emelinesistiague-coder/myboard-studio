@@ -32,6 +32,7 @@ const ICONS = {
   link: '<path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
   folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   wallet: '<rect x="3" y="6" width="18" height="14" rx="3"/><path d="M3 10h18M16 15h2"/>',
+  funnel: '<path d="M3 4h18l-7 8v6l-4 2v-8z"/>',
   gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v9h14v-9M12 8v13M12 8S10 3 7.5 4.5 9 8 12 8zm0 0s2-5 4.5-3.5S15 8 12 8z"/>',
 };
 const ic = (n, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ''}</svg>`;
@@ -44,6 +45,7 @@ App.NAV = [
   ['content', 'Réseaux sociaux', 'film'],
   ['scripts', 'Scripts vidéo', 'script'],
   ['ideas', 'Pense-bête', 'bulb'],
+  ['funnels', 'Tunnels de vente', 'funnel'],
   ['projects', 'Projets & objectifs', 'target'],
   ['finance', 'Finances', 'euro'],
 ];
@@ -322,6 +324,7 @@ App.act.postpone = el => { const t = App.get('tasks', el.dataset.id); if (t) App
 App.QUICK = [
   ['task', 'Tâche', 'check'], ['note', 'Idée ou note', 'bulb'], ['event', 'Rendez-vous', 'clock'], ['expense', 'Dépense', 'wallet'],
   ['revenue', 'Revenu', 'euro'], ['project', 'Projet', 'folder'], ['script', 'Script vidéo', 'script'], ['post', 'Publication', 'film'],
+  ['funnel', 'Tunnel de vente', 'funnel'], ['campaign', 'Campagne marketing', 'target'],
 ];
 App.act.quickAdd = el => {
   if (!App.companies().length) { App.act.newCompany(); return; }
@@ -337,6 +340,7 @@ App.quickCreate = (k, extra = {}) => {
     script: ['scripts', {}], post: ['posts', { date: td }],
     expense: ['transactions', { type: 'expense', date: td, recur: 'none' }], revenue: ['transactions', { type: 'revenue', date: td, recur: 'none' }],
     tax: ['transactions', { type: 'tax', date: td, recur: 'none' }], donation: ['transactions', { type: 'donation', date: td, recur: 'none' }],
+    funnel: ['funnels', {}], campaign: ['campaigns', { start: td, toFinance: true }],
   }[k];
   App.edit(map[0], Object.assign({ companyId: cid }, map[1], extra), { isNew: true });
 };
@@ -346,7 +350,8 @@ App.act.search = () => {
   const m = App.modal(`<input class="search-input" placeholder="Rechercher une tâche, un script, une note, un projet…" autofocus><div class="search-res"></div><div class="small muted" style="margin-top:8px">↑ ↓ pour naviguer · Entrée pour ouvrir · Échap pour fermer</div>`);
   const inp = m.querySelector('input'), out = m.querySelector('.search-res'); let res = [], sel = 0;
   const SRC = [['tasks', 'Tâche', o => [o.title, o.description]], ['posts', 'Publication', o => [o.title, o.caption, o.description, o.hashtags, o.notes]], ['scripts', 'Script', o => [o.title, o.concept, o.script, o.hook, o.notes]],
-    ['notes', 'Note', o => [o.title, o.body, o.link]], ['projects', 'Projet', o => [o.name, o.description, o.notes]], ['transactions', 'Finances', o => [o.label, o.notes, String(o.amount)]], ['goals', 'Objectif', o => [o.title]]];
+    ['notes', 'Note', o => [o.title, o.body, o.link]], ['projects', 'Projet', o => [o.name, o.description, o.notes]], ['transactions', 'Finances', o => [o.label, o.notes, String(o.amount)]], ['goals', 'Objectif', o => [o.title]],
+    ['funnels', 'Tunnel', o => [o.name, o.offer, o.description, ...(o.steps || []).map(s => s.name + ' ' + s.url)]], ['campaigns', 'Campagne', o => [o.name, o.promoCode, o.partner, o.notes]]];
   const draw = () => {
     const q = norm(inp.value.trim());
     if (!q) { out.innerHTML = ''; res = []; return; }

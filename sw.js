@@ -1,12 +1,12 @@
 /* MYBOARD Studio — service worker : l'application fonctionne hors ligne.
    Pense à changer VERSION quand tu modifies un fichier pour forcer la mise à jour. */
-const VERSION = 'myboard-v1';
+const VERSION = 'myboard-v2';
 const ASSETS = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png',
   'js/core.js', 'js/model.js', 'js/ui.js', 'js/editor.js', 'js/main.js',
   'js/views/today.js', 'js/views/dashboard.js', 'js/views/agenda.js', 'js/views/content.js', 'js/views/scripts.js',
-  'js/views/ideas.js', 'js/views/projects.js', 'js/views/finance.js', 'js/views/settings.js',
+  'js/views/ideas.js', 'js/views/funnels.js', 'js/views/projects.js', 'js/views/finance.js', 'js/views/settings.js',
 ];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));

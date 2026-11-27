@@ -4,6 +4,7 @@
   App.applyTheme();
   try { await App.load(); }
   catch (e) { $('#app').innerHTML = `<div class="empty-big"><h2>Impossible d’ouvrir la base de données locale</h2><p>${esc(e && e.message || e)}</p><p class="small">Vérifie que le navigateur n’est pas en navigation privée.</p></div>`; return; }
+  App.migrateCompanies();
   const saved = (App.prefs.state || {});
   Object.assign(App.state, {
     company: saved.company || 'all',

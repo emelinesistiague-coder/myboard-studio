@@ -11,6 +11,7 @@ const clone = o => JSON.parse(JSON.stringify(o));
 const norm = s => String(s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const eur = (n, dec) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: dec ?? (Math.abs(n) >= 1000 ? 0 : 2) }).format(n || 0);
 const pct = n => (n > 0 ? '+' : '') + Math.round(n) + ' %';
+const safeUrl = u => { u = String(u || '').trim(); if (!u) return ''; if (!/^[a-z][a-z0-9+.-]*:/i.test(u)) u = 'https://' + u; return /^https?:/i.test(u) ? u : ''; };
 const plural = (n, s, p) => `${n} ${n > 1 ? (p || s + 's') : s}`;
 
 /* ---------- Dates (format AAAA-MM-JJ, heure locale) ---------- */
@@ -40,12 +41,12 @@ const D = {
 };
 
 /* ---------- Base de données locale ---------- */
-const COLLS = ['companies', 'tasks', 'posts', 'scripts', 'notes', 'projects', 'goals', 'transactions'];
+const COLLS = ['companies', 'tasks', 'posts', 'scripts', 'notes', 'projects', 'goals', 'transactions', 'funnels', 'funnelStats', 'campaigns'];
 const DB = {
   db: null,
   open() {
     return new Promise((res, rej) => {
-      const r = indexedDB.open('myboard-studio', 1);
+      const r = indexedDB.open('myboard-studio', 2);
       r.onupgradeneeded = () => {
         const db = r.result;
         [...COLLS, 'files', 'meta'].forEach(n => { if (!db.objectStoreNames.contains(n)) db.createObjectStore(n, { keyPath: 'id' }); });
@@ -91,10 +92,17 @@ App.get = (coll, id) => App.data[coll] && App.data[coll].get(id);
 App.trash = (coll, id) => {
   const o = App.get(coll, id); if (!o) return;
   o.deletedAt = Date.now(); App.put(coll, o, { silent: true });
+  const linked = o.txId && App.get('transactions', o.txId); // revenu ou dépense générés automatiquement
+  if (linked) { linked.deletedAt = o.deletedAt; App.put('transactions', linked, { silent: true }); }
   App.toast('Déplacé dans la corbeille', { label: 'Annuler', fn: () => { delete o.deletedAt; App.put(coll, o); } });
   App.render();
 };
-App.restore = (coll, id) => { const o = App.get(coll, id); if (o) { delete o.deletedAt; App.put(coll, o); } };
+App.restore = (coll, id) => {
+  const o = App.get(coll, id); if (!o) return;
+  const linked = o.txId && App.get('transactions', o.txId);
+  if (linked && linked.deletedAt) { delete linked.deletedAt; App.put('transactions', linked, { silent: true }); }
+  delete o.deletedAt; App.put(coll, o);
+};
 App.purge = async (coll, id) => {
   const o = App.get(coll, id); if (!o) return;
   App.fileIdsOf(o).forEach(fid => DB.del('files', fid).catch(() => {}));

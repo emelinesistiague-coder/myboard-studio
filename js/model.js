@@ -20,6 +20,7 @@ App.companyTemplate = () => ({
     post: L([['Pas commencé', 'gris'], ['À préparer', 'sable'], ['En tournage', 'orange'], ['À monter', 'jaune'], ['En montage', 'violet'], ['À valider', 'rose'], ['Terminée', 'turquoise'], ['Programmée', 'bleu', { done: true }], ['Publiée', 'vert', { done: true, published: true }]]),
     script: L([['Idée', 'gris'], ['Brouillon', 'jaune'], ['Écrit', 'bleu'], ['Validé', 'turquoise'], ['Tourné', 'vert', { done: true }]]),
     project: L([['Idée', 'gris'], ['En cours', 'bleu'], ['En attente', 'jaune'], ['Terminé', 'vert', { done: true }]]),
+    funnel: L([['Brouillon', 'gris'], ['Actif', 'vert'], ['En pause', 'jaune'], ['Archivé', 'sable', { done: true }]]),
   },
   categories: {
     task: L([['Administratif', 'gris'], ['Création de contenu', 'rose'], ['Commercial', 'bleu'], ['Finances', 'vert'], ['Prise de décision', 'violet'], ['Projet', 'turquoise'], ['Personnel', 'sable']]),
@@ -30,14 +31,26 @@ App.companyTemplate = () => ({
     expense: L([['Matériel', 'sable'], ['Abonnements', 'violet'], ['Achats', 'orange'], ['Prestations externes', 'bleu'], ['Publicité', 'rose'], ['Autres charges', 'gris']]),
     tax: L([['Cotisations sociales', 'bleu'], ['Impôts et taxes', 'rouge'], ['TVA', 'jaune'], ['Autres prélèvements', 'gris']]),
     note: L([['Idée', 'jaune'], ['Info importante', 'rouge'], ['Piste de projet', 'turquoise'], ['Lien / référence', 'bleu']]),
+    source: L([['Instagram', 'rose'], ['TikTok', 'gris'], ['YouTube', 'rouge'], ['Pinterest', 'orange'], ['E-mailing', 'bleu'], ['Publicité Meta', 'violet'], ['Google', 'turquoise'], ['Collaboration', 'sable'], ['Direct', 'gris']]),
+    campaign: L([['Publicité', 'violet'], ['Collaboration', 'sable'], ['E-mailing', 'bleu'], ['Organique', 'vert'], ['Affiliation', 'turquoise']]),
   },
   networks: L([['Instagram', 'rose'], ['TikTok', 'gris'], ['YouTube', 'rouge'], ['Facebook', 'bleu'], ['LinkedIn', 'turquoise'], ['Pinterest', 'orange']]),
   fiscal: { regime: '', cotisRate: 0, impotRate: 0, tvaEnabled: false, tvaRate: 20 },
   donation: { mode: 'none', value: 0 },
 });
 
-App.STATUS_KINDS = { task: 'Tâches & rendez-vous', post: 'Publications', script: 'Scripts', project: 'Projets' };
-App.CAT_KINDS = { task: 'Tâches', event: 'Rendez-vous', post: 'Publications', script: 'Scripts', revenue: 'Revenus', expense: 'Dépenses', tax: 'Taxes & prélèvements', note: 'Pense-bête' };
+App.STATUS_KINDS = { task: 'Tâches & rendez-vous', post: 'Publications', script: 'Scripts', project: 'Projets', funnel: 'Tunnels' };
+App.CAT_KINDS = { task: 'Tâches', event: 'Rendez-vous', post: 'Publications', script: 'Scripts', revenue: 'Revenus', expense: 'Dépenses', tax: 'Taxes & prélèvements', note: 'Pense-bête', source: 'Sources de trafic', campaign: 'Types de campagnes' };
+
+/* Complète les entreprises existantes quand le modèle s'enrichit (nouveaux modules) */
+App.migrateCompanies = () => {
+  const tpl = App.companyTemplate();
+  App.companies({ archived: true }).forEach(c => {
+    let changed = false;
+    ['statuses', 'categories'].forEach(g => Object.keys(tpl[g]).forEach(k => { c[g] = c[g] || {}; if (!c[g][k]) { c[g][k] = clone(tpl[g][k]); changed = true; } }));
+    if (changed) App.put('companies', c, { silent: true });
+  });
+};
 
 App.newCompany = (data = {}) => {
   const n = App.companies({ archived: true }).length;
@@ -207,5 +220,47 @@ App.goalProgress = g => {
   const target = +g.target || 0;
   return { cur, target, ratio: target ? Math.min(1, cur / target) : 0 };
 };
+/* ---------- Tunnels de vente ---------- */
+App.STEP_TYPES = [
+  { id: 'capture', label: 'Page de capture', color: App.COLORS.bleu },
+  { id: 'vente', label: 'Page de vente', color: App.COLORS.violet },
+  { id: 'paiement', label: 'Page de paiement', color: App.COLORS.orange },
+  { id: 'upsell', label: 'Upsell', color: App.COLORS.rose },
+  { id: 'downsell', label: 'Downsell', color: App.COLORS.sable },
+  { id: 'merci', label: 'Page de remerciement', color: App.COLORS.vert },
+  { id: 'telechargement', label: 'Téléchargement', color: App.COLORS.turquoise },
+  { id: 'autre', label: 'Autre étape', color: App.COLORS.gris },
+];
+App.stepType = id => App.STEP_TYPES.find(s => s.id === id) || App.STEP_TYPES[App.STEP_TYPES.length - 1];
+App.defaultSteps = () => ['vente', 'paiement', 'merci'].map(t => ({ id: uid(), type: t, name: App.stepType(t).label, url: '' }));
+const n0 = v => +v || 0;
+/* Additionne les relevés de statistiques d'une période (filtre facultatif) */
+App.funnelAgg = (s, e, fn) => {
+  const entries = App.list('funnelStats', x => x.date >= s && x.date <= e && (!fn || fn(x)));
+  const a = { entries, visitors: {}, clicks: 0, carts: 0, checkouts: 0, purchases: 0, revenue: 0, promos: {}, first: 0 };
+  entries.forEach(x => {
+    Object.entries(x.visitors || {}).forEach(([k, v]) => a.visitors[k] = (a.visitors[k] || 0) + n0(v));
+    ['clicks', 'carts', 'checkouts', 'purchases', 'revenue'].forEach(k => a[k] += n0(x[k]));
+    (x.promos || []).forEach(p => { if (!p.code) return; const k = p.code.trim().toUpperCase(); a.promos[k] = a.promos[k] || { uses: 0, revenue: 0 }; a.promos[k].uses += n0(p.uses); a.promos[k].revenue += n0(p.revenue); });
+    const f = App.get('funnels', x.funnelId); const firstId = f && f.steps && f.steps[0] && f.steps[0].id;
+    a.first += firstId ? n0((x.visitors || {})[firstId]) : 0;
+  });
+  a.abandons = Math.max(0, a.checkouts - a.purchases);
+  a.abandonRate = a.checkouts ? a.abandons / a.checkouts : null;
+  a.conversion = a.first ? a.purchases / a.first : null;
+  a.perVisitor = a.first ? a.revenue / a.first : null;
+  a.basket = a.purchases ? a.revenue / a.purchases : null;
+  return a;
+};
+App.campaignAgg = c => {
+  const s = c.start || '0000-01-01', e = c.end || '9999-12-31';
+  const a = App.funnelAgg('0000-01-01', '9999-12-31', x => x.campaignId === c.id);
+  let promoUses = 0, promoRevenue = 0;
+  if (c.promoCode) App.list('funnelStats', x => x.date >= s && x.date <= e).forEach(x => (x.promos || []).forEach(p => { if (p.code && p.code.trim().toUpperCase() === c.promoCode.trim().toUpperCase()) { promoUses += n0(p.uses); promoRevenue += n0(p.revenue); } }));
+  const cost = n0(c.cost), revenue = a.revenue || promoRevenue;
+  return { ...a, promoUses, promoRevenue, cost, revenueAttr: revenue, roas: cost ? revenue / cost : null, cpa: cost && (a.purchases || promoUses) ? cost / (a.purchases || promoUses) : null };
+};
+App.pctFmt = r => r === null || r === undefined || !isFinite(r) ? '—' : (Math.round(r * 1000) / 10).toString().replace('.', ',') + ' %';
+App.num = n => new Intl.NumberFormat('fr-FR').format(Math.round(n || 0));
 App.projectTasks = p => App.list('tasks', t => t.projectId === p.id);
 App.projectProgress = p => { const ts = App.projectTasks(p).filter(t => !App.status('task', t).cancelled); return ts.length ? ts.filter(App.isDone).length / ts.length : null; };
